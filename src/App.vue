@@ -4,6 +4,8 @@ import HelloWorld from './components/HelloWorld.vue'
 
 console.log(111);
 console.log(44444);
+console.log(555555);
+console.log(666666);
 
 
 </script>
