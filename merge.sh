@@ -69,16 +69,33 @@ if [[ -n $(git status --porcelain) ]]; then
     fi
 fi
 
-# 切换main并拉取最新
+# ========== 新增关键步骤：开发分支先同步最新main，提前消化冲突 ==========
+print_info "===== 预同步：将最新main合并到 ${TARGET_BRANCH}，提前处理冲突 ====="
+git checkout "${TARGET_BRANCH}"
+# 拉取最新main代码
+git fetch origin "${MAIN_BRANCH}:${MAIN_BRANCH}"
+# 合并main到开发分支
+if git merge "${MAIN_BRANCH}"; then
+    print_info "${TARGET_BRANCH} 已同步最新main，无冲突"
+else
+    print_err "在 ${TARGET_BRANCH} 分支合并main出现冲突，请手动解决："
+    echo "1. 处理所有冲突文件 git add ."
+    echo "2. git commit -m 'merge main into ${TARGET_BRANCH}'"
+    echo "3. 解决完成后重新执行本脚本"
+    echo "放弃合并：git merge --abort"
+    exit 3
+fi
+
+# 切回main并拉取远端最新main
 print_info "切换至 ${MAIN_BRANCH} 分支并同步远程最新代码..."
 git checkout "${MAIN_BRANCH}"
 git pull origin "${MAIN_BRANCH}"
 
-# 拉取目标分支最新
+# 拉取目标分支最新代码
 print_info "同步远程 ${TARGET_BRANCH} 分支代码..."
 git fetch origin "${TARGET_BRANCH}:${TARGET_BRANCH}"
 
-# squash合并
+# squash合并（此时冲突概率极低）
 print_info "开始 squash 合并 ${TARGET_BRANCH}，压缩所有提交记录..."
 if git merge --squash "${TARGET_BRANCH}"; then
     if [[ -n "$COMMIT_MSG" ]]; then
@@ -91,7 +108,7 @@ if git merge --squash "${TARGET_BRANCH}"; then
     echo "最新合并提交："
     git log -1 --oneline
 else
-    # 冲突提示
+    # 冲突提示（经过预合并后这里几乎不会触发）
     print_err "合并出现代码冲突，请手动解决冲突文件后执行："
     echo "  1. 解决所有冲突文件后 git add ."
     if [[ -n "$COMMIT_MSG" ]]; then
